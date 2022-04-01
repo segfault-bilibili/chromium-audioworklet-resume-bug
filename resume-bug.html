@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head></head>
+<body>
+    <h1>Chromium AudioWorklet resume bug</h1>
+    <hr>
+    <p>
+        Click "Init AudioContext" button and "Play" button in turn to play tide-like white noise.<br>
+        <i>"Tide-like" means: <b>it starts in silence</b>, and then sounds gradually more and more louder, then turns to be less and less louder, and so on.</i><br>
+        The expected behavior is just as described above: <b>it should always start in silence</b> - however, I can hear a very short "residue" burst in the beginning if it's stopped first and then restarted.<br>
+        I encountered this problem in Chrome (100.0.4896.60); Firefox (98.0.2) didn't appear to have this problem.<br>
+    </p>
+    <hr>
+    <button id="initbtn" onclick="initCtx()">Init AudioContext</button>
+    <button id="playbtn" onclick="play()" disabled>Play</button>
+    <button id="stopbtn" onclick="stop()" disabled>Stop</button>
+    <button id="closebtn" onclick="closeCtx()" disabled>Close AudioContext</button>
+    <br>
+    <input type="range" id="volumeslider" min="0" max="100" value="100" step="1">
+    <input type="number" step="1" min="0" max="100" placeholder="0-100" id="volume" value="100">
+    <br>
+    <script>
+        var audioContext;
+        var gainNode;
+        var whiteNoiseNode;
+        var volume = document.getElementById("volume");
+        var volumechange = (val) => {console.log(val)};
+        var volumeslider = document.getElementById("volumeslider");
+
+        initbtn.disabled = false;
+        playbtn.disabled = true;
+        stopbtn.disabled = true;
+        closebtn.disabled = true;
+
+        function clampVolume(val) {
+            val = parseInt(val);
+            if (val > 100) return 100;
+            else if (val < 0) return 0;
+            else if (val >= 0 && val <= 100) return val;
+            else return 100;
+        }
+        function setVolume(val) {
+            val = clampVolume(val);
+            if (gainNode) gainNode.gain.value = val / 100;
+        }
+        volumeslider.addEventListener("input", (ev) => {
+            volume.value = ev.target.value;
+            setVolume(ev.target.value);
+        });
+        volume.addEventListener("input", (ev) => {
+            if (clampVolume(ev.target.value) != parseInt(ev.target.value)) {
+                volumeslider.value = "" + clampVolume(ev.target.value);
+                volume.value = "" + clampVolume(ev.target.value);
+            }
+            setVolume(ev.target.value);
+        });
+
+        var isPlaying = false;
+        var callbacks = [];
+
+        async function initCtx() {
+            if (audioContext != null) return;
+            audioContext = new AudioContext({latencyHint: "playback", sampleRate: 48000});
+            if (audioContext == null) throw "cannot create AudioContext";
+            await audioContext.audioWorklet.addModule('resume-bug-processor.js');
+            const options = {
+                numberOfInputs: 0,
+                numberOfOutputs: 1,
+                outputChannelCount: [2],
+                //parameterData: paramData,
+                //processorOptions: {controller: controller}
+            };
+            whiteNoiseNode = new AudioWorkletNode(audioContext, 'resume-bug-processor', options);
+            whiteNoiseNode.port.onmessage = (ev) => {
+                const resolve = callbacks.shift();
+                if (typeof resolve === "function") resolve();
+            }
+            gainNode = audioContext.createGain();
+            setVolume(volume.value);
+            initbtn.disabled = true;
+            playbtn.disabled = false;
+            closebtn.disabled = false;
+        }
+
+        async function play() {
+            if (isPlaying) return;
+
+            whiteNoiseNode.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            await audioContext.resume();
+
+            await new Promise((resolve) => {
+                whiteNoiseNode.port.postMessage(true);
+                callbacks.push(resolve);
+            });
+
+            isPlaying = true;
+            playbtn.disabled = true;
+            stopbtn.disabled = false;
+        }
+
+        async function stop() {
+            if (!isPlaying) return;
+
+            await new Promise((resolve) => {
+                whiteNoiseNode.port.postMessage(false);
+                callbacks.push(resolve);
+            });
+
+            whiteNoiseNode.disconnect();
+            gainNode.disconnect();
+            await audioContext.suspend();
+
+            isPlaying = false;
+            playbtn.disabled = false;
+            stopbtn.disabled = true;
+        }
+
+        async function closeCtx() {
+            if (audioContext == null) return;
+            whiteNoiseNode.disconnect();
+            gainNode.disconnect();
+            await audioContext.close();
+            audioContext = null;
+            gainNode = null;
+            whiteNoiseNode = null;
+
+            isPlaying = false;
+            initbtn.disabled = false;
+            playbtn.disabled = true;
+            stopbtn.disabled = true;
+            closebtn.disabled = true;
+        }
+    </script>
+</body>
+</html>
