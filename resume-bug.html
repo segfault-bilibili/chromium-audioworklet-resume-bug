@@ -8,6 +8,7 @@
         Click "Init AudioContext" button and "Play" button in turn to play tide-like white noise.<br>
         <i>"Tide-like" means: <b>it starts in silence</b>, and then sounds gradually more and more louder, then turns to be less and less louder, and so on.</i><br>
         The expected behavior is just as described above: <b>it should always start in silence</b> - however, I can hear a very short "residue" burst in the beginning if it's stopped first and then restarted.<br>
+        Clicking "Send Stop Message" button (and then wait for some while, even for just some milliseconds) before "Stop" and "Play" buttons seems to be able to workaround this issue.<br>
         I encountered this problem in Chrome (100.0.4896.60); Firefox (98.0.2) didn't appear to have this problem.<br>
     </p>
     <hr>
@@ -15,6 +16,8 @@
     <button id="playbtn" onclick="play()" disabled>Play</button>
     <button id="stopbtn" onclick="stop()" disabled>Stop</button>
     <button id="closebtn" onclick="closeCtx()" disabled>Close AudioContext</button>
+    <br>
+    <button id="sendstopbtn" onclick="sendStop()" disabled>Send Stop Message</button>
     <br>
     <input type="range" id="volumeslider" min="0" max="100" value="100" step="1">
     <input type="number" step="1" min="0" max="100" placeholder="0-100" id="volume" value="100">
@@ -73,13 +76,20 @@
             whiteNoiseNode = new AudioWorkletNode(audioContext, 'resume-bug-processor', options);
             whiteNoiseNode.port.onmessage = (ev) => {
                 const resolve = callbacks.shift();
-                if (typeof resolve === "function") resolve();
+                if (typeof resolve === "function") resolve(ev.data);
             }
             gainNode = audioContext.createGain();
             setVolume(volume.value);
             initbtn.disabled = true;
             playbtn.disabled = false;
             closebtn.disabled = false;
+        }
+
+        async function sendMsgAndWaitForReply(msg) {
+            return await new Promise((resolve) => {
+                whiteNoiseNode.port.postMessage(msg);
+                callbacks.push(resolve);
+            });
         }
 
         async function play() {
@@ -89,23 +99,20 @@
             gainNode.connect(audioContext.destination);
             await audioContext.resume();
 
-            await new Promise((resolve) => {
-                whiteNoiseNode.port.postMessage(true);
-                callbacks.push(resolve);
-            });
+            const msg = true;
+            const reply = await sendMsgAndWaitForReply(msg);
+            console.log(`msg=${msg} reply=${reply}`);
 
             isPlaying = true;
             playbtn.disabled = true;
             stopbtn.disabled = false;
+            sendstopbtn.disabled = false;
         }
 
         async function stop() {
             if (!isPlaying) return;
 
-            await new Promise((resolve) => {
-                whiteNoiseNode.port.postMessage(false);
-                callbacks.push(resolve);
-            });
+            await sendStop();
 
             whiteNoiseNode.disconnect();
             gainNode.disconnect();
@@ -114,6 +121,17 @@
             isPlaying = false;
             playbtn.disabled = false;
             stopbtn.disabled = true;
+            sendstopbtn.disabled = true;
+        }
+
+        async function sendStop() {
+            if (!isPlaying) return;
+
+            const msg = false;
+            const reply = await sendMsgAndWaitForReply(msg);
+            console.log(`msg=${msg} reply=${reply}`);
+
+            // not changing isPlaying
         }
 
         async function closeCtx() {
@@ -129,6 +147,7 @@
             initbtn.disabled = false;
             playbtn.disabled = true;
             stopbtn.disabled = true;
+            sendstopbtn.disabled = true;
             closebtn.disabled = true;
         }
     </script>

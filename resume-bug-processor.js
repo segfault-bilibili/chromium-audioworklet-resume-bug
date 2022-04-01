@@ -7,7 +7,7 @@ class ResumeBugProcessor extends AudioWorkletProcessor {
         this.port.onmessage = (ev) => {
             this.isPlaying = ev.data ? true : false;
             this.counter = 0;
-            this.port.postMessage("done");
+            this.port.postMessage(`done (${ev.data})`);
         }
     }
   
