@@ -9,3 +9,7 @@ The expected behavior is just as described above: **it should always start in si
 Clicking "Send Stop Message" button (and then wait for some while, even for just some milliseconds) before "Stop" and "Play" buttons seems to be able to workaround this issue.
 
 I encountered this problem in Chrome (100.0.4896.60); Firefox (98.0.2) didn't appear to have this problem.
+
+------
+
+Update: I tested initially on a Windows 11 x64 PC. Then I tried Chrome for Android on a phone running LineageOS 18.1, the situation seemed to be even worse: "Send Stop Message" workaround didn't seem to eliminate abnormal burst either.
