@@ -13,3 +13,9 @@ I encountered this problem in Chrome (100.0.4896.60); Firefox (98.0.2) didn't ap
 ------
 
 Update: I tested initially on a Windows 11 x64 PC. Then I tried Chrome for Android on a phone running LineageOS 18.1, the situation seemed to be even worse: "Send Stop Message" workaround didn't seem to eliminate abnormal burst either.
+
+------
+
+Update2: There's also another problem: on the Android phone, if Chrome is switched to background, the sound played by AudioWorklet will no longer be continuous and smooth, but intermittent.
+
+(Firefox for Android didn't seem to have both these two problems)
