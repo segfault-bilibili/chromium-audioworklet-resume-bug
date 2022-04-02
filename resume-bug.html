@@ -17,6 +17,8 @@
     Update2: There's also another problem: on the Android phone, if Chrome is switched to background, the sound played by AudioWorklet will no longer be continuous and smooth, but intermittent.<br>
     (Firefox for Android didn't seem to have both these two problems)<br>
     <hr>
+    Let AudioWorklet reply message after <input id="countdowninput" type="number" value="0" min="0" step="1" max="99999"> process() calls. (reinit AudioContext to make change take effect)<br>
+    AudioContext will be suspended only after receiving the reply message from AudioWorklet, so that increasing this value seems to workaround this problem as well.<br>
     <button id="initbtn" onclick="initCtx()">Init AudioContext</button>
     <button id="playbtn" onclick="play()" disabled>Play</button>
     <button id="stopbtn" onclick="stop()" disabled>Stop</button>
@@ -76,7 +78,7 @@
                 numberOfOutputs: 1,
                 outputChannelCount: [2],
                 //parameterData: paramData,
-                //processorOptions: {controller: controller}
+                processorOptions: {countDownFrom: countdowninput.value}
             };
             whiteNoiseNode = new AudioWorkletNode(audioContext, 'resume-bug-processor', options);
             whiteNoiseNode.port.onmessage = (ev) => {
