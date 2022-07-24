@@ -14,9 +14,6 @@
     <hr>
     Update: I tested initially on a Windows 11 x64 PC. Then I tried Chrome for Android on a phone running LineageOS 18.1, the situation seemed to be even worse: "Send Stop Message" workaround didn't seem to eliminate abnormal burst either.
     <hr>
-    Update2: There's also another problem: on the Android phone, if Chrome is switched to background, the sound played by AudioWorklet will no longer be continuous and smooth, but intermittent.<br>
-    (Firefox for Android didn't seem to have both these two problems)<br>
-    <hr>
     Let AudioWorklet reply message after <input id="countdowninput" type="number" value="0" min="0" step="1" max="99999"> process() calls. (reinit AudioContext to make change take effect)<br>
     AudioContext will be suspended only after receiving the reply message from AudioWorklet, so that increasing this value seems to workaround this problem as well.<br>
     <button id="initbtn" onclick="initCtx()">Init AudioContext</button>
